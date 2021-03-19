@@ -1,0 +1,50 @@
+{
+  "name": "myappl",
+  "version": "0.0.1",
+  "description": "My Business Application",
+  "dependencies": {
+    "@sap/cds": "^4",
+    "@sap/audit-logging": "^3",
+    "@sap/hana-client": "^2",
+    "@sap/cds-odata-v2-adapter-proxy": "^1",
+    "@sap/xsenv": "^3",
+    "@sap/xssec": "^3",
+    "passport": "^0.4.1",
+    "cf-nodejs-logging-support": "^6",
+    "express": "^4"
+  },
+  "devDependencies": {
+    "sqlite3": "5.0.0"
+  },
+  "scripts": {
+    "start": "npx cds run"
+  },
+  "cds": {
+    "requires": {
+      "[production]": {
+        "uaa": {
+          "kind": "xsuaa"
+        }
+      },
+      "auth": {
+        "[production]": {
+          "strategy": "JWT"
+        },
+        "[development]": {
+          "strategy": "mock"
+        }
+      },
+      "db": {
+        "[production]": {
+          "kind": "hana"
+        },
+        "[development]": {
+          "kind": "sql"
+        }
+      }
+    },
+    "hana": {
+      "deploy-format": "hdbtable"
+    }
+  }
+}

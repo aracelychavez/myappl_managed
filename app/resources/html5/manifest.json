@@ -1,0 +1,16 @@
+{
+    "_version": "",
+    "sap.cloud": {
+        "service": "myappl-service"
+    },
+    "sap.app": {
+        "id": "myappl-html5",
+        "type": "application",
+        "applicationVersion": {
+            "version": "0.0.1"
+        },
+        "title": "My Appl HTML5",
+        "description": "My Business Application HTML5",
+        "offline": false
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "welcomeFile": "index.html",
+    "authenticationMethod": "route",
+    "routes": [
+        {
+            "source": "^/catalog/(.*)$",
+            "csrfProtection": false,
+            "authenticationType": "xsuaa",
+            "destination": "myappl-srv"
+        }
+        ,{
+            "source": "^/v2/catalog/(.*)$",
+            "csrfProtection": false,
+            "authenticationType": "xsuaa",
+            "destination": "myappl-srv"
+        }
+        ,{
+            "source": "^/(.*)$",
+            "authenticationType": "xsuaa",
+            "service": "html5-apps-repo-rt"
+        }
+    ]
+}

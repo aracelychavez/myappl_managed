@@ -1,0 +1,186 @@
+_schema-version: '3.2'
+ID: myappl
+version: 0.0.1
+
+parameters:
+  enable-parallel-deployments: true
+
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm install --production
+        - npx -p @sap/cds-dk cds build --production
+
+modules:
+  # ---------------- DATABASE DEPLOYER MODULE ------------------
+  - name: myappl-db-deployer
+  # ------------------------------------------------------------
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+      memory: 256M
+      disk-quota: 1024M
+    requires:
+      - name: myappl-uaa
+      - name: myappl-db
+
+  # --------------------- SERVER MODULE ------------------------
+  - name: myappl-srv
+  # ------------------------------------------------------------
+    type: nodejs
+    path: gen/srv
+    parameters:
+      buildpack: nodejs_buildpack
+      memory: 512M
+      disk-quota: 1024M
+    requires:
+      - name: myappl-uaa
+      - name: myappl-logging
+      - name: myappl-db
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+
+
+  # ----------- HTML5 APP REPOSITORY APP HTML5 MODULE ----------
+  - name: myappl-html5
+  # ------------------------------------------------------------
+    type: html5
+    path: app/resources/html5
+    build-parameters:
+      builder: custom
+      commands:
+        - npm run build
+      supported-platforms: []
+
+  # ----------- HTML5 APP REPOSITORY APP FIORI MODULE ----------
+  - name: myappl-fiori
+  # ------------------------------------------------------------
+    type: html5
+    path: app/resources/fiori
+    build-parameters:
+      builder: custom
+      commands:
+        - npm run build
+      supported-platforms: []
+
+  # ----------- HTML5 APP REPOSITORY DEPLOYER MODULE -----------
+  - name: myappl-ui-deployer
+  # ------------------------------------------------------------
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: myappl-html5repo
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: gen/app
+      requires:
+        - artifacts:
+            - html5-content.zip
+          name: myappl-html5
+          target-path: gen/app/
+        - artifacts:
+            - fiori-content.zip
+          name: myappl-fiori
+          target-path: gen/app/
+
+  # ----- HTML5 APP REPOSITORY DESTINATION CONTENT MODULE ------
+  - name: myappl-dest-content
+  # ------------------------------------------------------------
+    type: com.sap.application.content
+    requires:
+      - name: myappl-uaa
+        parameters:
+          service-key:
+            name: myappl-uaa-sk
+      - name: myappl-dest
+        parameters:
+          content-target: true
+      - name: myappl-html5repo
+        parameters:
+          service-key:
+            name: myappl-html5repo-sk
+    parameters:
+      content:
+        subaccount:
+          existing_destinations_policy: update
+          destinations:
+            - Name: myappl-service-myappl-uaa
+              ServiceInstanceName: myappl-uaa
+              ServiceKeyName: myappl-uaa-sk
+              Authentication: OAuth2UserTokenExchange
+              sap.cloud.service: myappl-service
+            - Name: myappl-service-myappl-html5repo
+              ServiceInstanceName: myappl-html5repo
+              ServiceKeyName: myappl-html5repo-sk
+              sap.cloud.service: myappl-service
+    build-parameters:
+      no-source: true
+
+resources:
+  # ----------------------- UAA SERVICE ------------------------
+  - name: myappl-uaa
+  # ------------------------------------------------------------
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+
+  # -------------------- DESTINATION SERVICE -------------------
+  - name: myappl-dest
+  # ------------------------------------------------------------
+    type: org.cloudfoundry.managed-service
+    requires:
+      - name: srv-api
+    parameters:
+      service: destination
+      service-plan: lite
+      config:
+        HTML5Runtime_enabled: true
+        init_data:
+          subaccount:
+            existing_destinations_policy: update
+            destinations:
+              - Name: myappl-srv
+                Description: My Appl - Server Module
+                URL: ~{srv-api/srv-url}
+                Type: HTTP
+                ProxyType: Internet
+                Authentication: NoAuthentication
+                HTML5.DynamicDestination: true
+                HTML5.ForwardAuthToken: true
+
+  # ----------- HTML5 APP REPOSITORY HOSTING SERVICE -----------
+  - name: myappl-html5repo
+  # ------------------------------------------------------------
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+
+
+  # ------------------- HDI CONTAINER SERVICE ------------------
+  - name: myappl-db
+  # ------------------------------------------------------------
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+    properties:
+      hdi-service-name: ${service-name}
+
+
+
+  # ---------------- APPLICATION LOGGING SERVICE ---------------
+  - name: myappl-logging
+  # ------------------------------------------------------------
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: application-logs
+      service-plan: lite
